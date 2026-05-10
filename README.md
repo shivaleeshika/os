@@ -699,11 +699,11 @@ int main() {
     cout << "Frames: "; cin >> nf;
 
     int ch;
-    cout << "\n1.FIFO 2.LRU 3.Optimal 4.All\nChoice: "; cin >> ch;
+    cout << "\n1.FIFO 2.LRU 3.Optimal \nChoice: "; cin >> ch;
 
-    if (ch==1||ch==4) fifo();
-    if (ch==2||ch==4) lru();
-    if (ch==3||ch==4) optimal();
+    if (ch==1) fifo();
+    if (ch==2) lru();
+    if (ch==3) optimal();
 }
 ```
 
