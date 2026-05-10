@@ -1,4 +1,3 @@
-# os
 # OS Lab — Master Reference Document
 
 All 4 programs: Producer-Consumer, Banker's Algorithm, CPU Scheduling, Page Replacement.
@@ -699,11 +698,12 @@ int main() {
     cout << "Frames: "; cin >> nf;
 
     int ch;
-    cout << "\n1.FIFO 2.LRU 3.Optimal \nChoice: "; cin >> ch;
+    cout << "\n1.FIFO 2.LRU 3.Optimal 4.exit\nChoice: "; cin >> ch;
 
     if (ch==1) fifo();
-    if (ch==2) lru();
-    if (ch==3) optimal();
+    else if (ch==2) lru();
+    else if (ch==3) optimal();
+    else if (ch==4) return 0;
 }
 ```
 
