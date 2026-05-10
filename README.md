@@ -248,11 +248,12 @@ int main() {
 
             // Check if process i's remaining need can be satisfied by work[]
             // i.e., need[i][j] <= work[j] for ALL resource types j
-            bool canRun = true;
-            for (int j = 0; j < r; j++)
-                if (need[i][j] > work[j]) { canRun = false; break; }
+            // If the loop finishes without breaking, j reaches r → all needs met
+            int j;
+            for (j = 0; j < r; j++)
+                if (need[i][j] > work[j]) break;
 
-            if (canRun) {
+            if (j == r) {  // all resource needs satisfied → process can run
                 // Simulate process i finishing:
                 // it releases all its currently allocated resources back to work[]
                 for (int j = 0; j < r; j++) work[j] += alloc[i][j];
@@ -480,16 +481,10 @@ void rr() {
         else rq.push(i);               // not done — go back to end of queue
     }
     cout << "\n";
-
-    // RR stats — ft[] is indexed directly by process index (not order[])
-    cout << "PID\tWT\tTAT\n";
-    float sw = 0, st = 0;
-    for (int i = 0; i < n; i++) {
-        int tat = ft[i] - at[i], wt = tat - bt[i];
-        cout << "P" << id[i] << "\t" << wt << "\t" << tat << "\n";
-        sw += wt; st += tat;
-    }
-    cout << "Avg WT=" << sw/n << " Avg TAT=" << st/n << "\n";
+    // Reuse shared stats() — order[i]=i since ft[i] already maps to process i
+    int order[10];
+    for (int i = 0; i < n; i++) order[i] = i;
+    stats(order, ft, n);
 }
 
 int main() {
@@ -608,7 +603,8 @@ int inFrame(int p) {
 // show(fault) — print current frame contents and whether this was a fault
 void show(bool fault) {
     for (int i = 0; i < nf; i++)
-        cout << (frames[i] == -1 ? 0 : frames[i]) << " ";
+        if (frames[i] == -1) cout << "- ";
+        else cout << frames[i] << " ";
     cout << (fault ? "<-- FAULT" : "") << "\n";
 }
 
@@ -670,20 +666,14 @@ void optimal() {
         cout << "Ref " << pages[t] << ": ";
         if (inFrame(pages[t]) != -1) { show(false); continue; }  // hit
 
-        // Prefer empty frame first
-        int v = -1;
-        for (int i = 0; i < nf; i++)
-            if (frames[i] == -1) { v = i; break; }
-
-        if (v == -1) {
-            // All frames full — find which page is used farthest in future
-            int far = -1;
-            for (int i = 0; i < nf; i++) {
-                int nx = n;  // default: assume this page never appears again (= n, beyond end)
-                for (int j = t+1; j < n; j++)
-                    if (pages[j] == frames[i]) { nx = j; break; }  // found next use
-                if (nx > far) { far = nx; v = i; }  // farther = better victim
-            }
+        // Find victim: prefer empty frame, else evict page used farthest in future
+        int v = 0, far = -1;
+        for (int i = 0; i < nf; i++) {
+            if (frames[i] == -1) { v = i; break; }   // empty slot → use it immediately
+            int nx = n;  // default: assume this page never appears again (= n, beyond end)
+            for (int j = t+1; j < n; j++)
+                if (pages[j] == frames[i]) { nx = j; break; }  // found next use
+            if (nx > far) { far = nx; v = i; }  // farther in future = better victim
         }
         frames[v] = pages[t];
         faults++; show(true);
@@ -791,3 +781,82 @@ Optimal: victim = frame with max(next use position)
 Producer: wait(emp) → lock → write → unlock → signal(full)
 Consumer: wait(full) → lock → read  → unlock → signal(emp)
 ```
+
+---
+
+## Exam Strategy — How to Skip Functions You Don't Need
+
+Exam gives **any 2 of 4** scheduling or **any 2 of 3** page replacement.
+The code is designed so you **write a small skeleton once, then only the 2 functions asked**.
+Skip any function entirely — the code still compiles and runs.
+
+### CPU Scheduling — What to Write
+
+**Always write this skeleton (~20 lines):**
+```
+globals:  n, q, id[], at[], bt[], pr[]
+stats()   — shared WT/TAT printer (all 4 algos reuse this)
+main()    — input + menu (only list the 2 options you need)
+```
+
+**Then pick any 2 functions:**
+| Function | Lines | Core idea |
+|----------|-------|-----------|
+| `fcfs()` | ~15 | Sort by arrival → run sequentially |
+| `sjf()` | ~15 | Pick min `bt` among arrived, run to completion |
+| `priority()` | ~15 | Pick min `pr` among arrived, run to completion |
+| `rr()` | ~18 | Queue + time quantum, reuses `stats()` |
+
+**SJF ↔ Priority trick:** They are the **exact same code**. Only one line differs:
+```
+SJF:       if (idx == -1 || bt[i] < bt[idx])   // pick shortest burst
+Priority:  if (idx == -1 || pr[i] < pr[idx])   // pick highest priority
+```
+Memorize SJF → swap `bt` to `pr` → you have Priority for free.
+
+**Example:** Exam asks FCFS + RR → write skeleton + `fcfs()` + `rr()`, skip `sjf()` and `priority()` entirely. Menu becomes:
+```cpp
+cout << "1.FCFS 2.RR\nChoice: "; cin >> ch;
+if (ch==1) fcfs();
+if (ch==2) { cout << "Quantum: "; cin >> q; rr(); }
+```
+
+### Page Replacement — What to Write
+
+**Always write this skeleton (~15 lines):**
+```
+globals:    pages[], frames[], n, nf
+inFrame(p)  — checks if page is in frames (shared by all 3)
+show(fault) — prints frame state (shared by all 3)
+main()      — input + menu (only list the 2 options you need)
+```
+
+**Then pick any 2 functions:**
+| Function | Lines | Core idea |
+|----------|-------|-----------|
+| `fifo()` | ~10 | Circular pointer `ptr`, replaces oldest |
+| `lru()` | ~14 | Track `last[]` access time, replace min |
+| `optimal()` | ~16 | Scan future for next use, replace farthest |
+
+**All 3 follow the same skeleton:**
+```
+1. init frames to -1
+2. for each page:
+     if inFrame() hit → continue
+     find victim (THIS IS THE ONLY PART THAT CHANGES)
+     load page, faults++
+```
+
+**Example:** Exam asks FIFO + Optimal → write skeleton + `fifo()` + `optimal()`, skip `lru()`. Menu becomes:
+```cpp
+cout << "1.FIFO 2.Optimal\nChoice: "; cin >> ch;
+if (ch==1) fifo();
+if (ch==2) optimal();
+```
+
+### Quick Reference — Lines to Write
+
+| Scenario | Skeleton | + 2 functions | Total |
+|----------|----------|---------------|-------|
+| Any 2 scheduling | ~20 | ~15 + ~15 | **~50 lines** |
+| Any 2 page replacement | ~15 | ~10 to ~16 each | **~35-45 lines** |
